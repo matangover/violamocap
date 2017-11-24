@@ -162,3 +162,70 @@ def load_bow_changes():
 participants = ["Marina", "Matan"]
 trials = range(1, 4)
 bow_changes = load_bow_changes()
+
+def get_frame_range(participant, trial):
+    changes = bow_changes[participant][trial]
+    first_frame = int(changes.iloc[0, 0])
+    last_frame = int(changes.iloc[-1, -1])
+    return slice(first_frame, last_frame)
+
+viola_strings = ['C', 'G', 'D', 'A']
+
+def add_guide_lines(ax):
+    # fig = plt.figure(figsize=(10,4))
+    # ax = fig.add_subplot(111)
+    # plot = ax.plot(series.iloc[first_frame:last_frame])
+    # Add horizontal line on zero.
+    ax.axhline(0, linewidth=1, linestyle='-.', color='pink')
+    # Add vertical line for every bow change.
+    # 1 stroke = 4 beats * 1 sec/beat * * 100 frame/sec = 400 frames
+    # 1 string = 8 strokes = 3200 frames
+    # 4 strings = 12800 frames
+    for string_index, string in enumerate(viola_strings):
+        string_start_frame = string_index * 3200
+        ax.axvline(string_start_frame, linewidth=1, linestyle='--', color='green')
+        for change in range(1,8):
+            stroke_start_frame = string_start_frame + change * 400
+            ax.axvline(stroke_start_frame, linewidth=0.5, linestyle='--', color='gray')
+    ax.axvline(12800, linewidth=1, linestyle='--', color='green')
+    ticks = plt.xticks(range(0, 12800, 3200), viola_strings)
+    #plt.title("%s #%s - %s" % (participant, trial, data_type))    
+    #ylim = {"velocity": (-7, 7), "skewness": (-30, 30)}
+    #ax.set_ylim(*ylim[data_type])
+#    return ax
+ #   plt.savefig()
+#    plt.close()
+
+def normalize_frame_numbers(data, participant, trial):
+    series = data[participant][trial]
+    frame_range = get_frame_range(participant, trial)
+    series = series.iloc[frame_range]
+    frame_count = frame_range.stop - frame_range.start
+    series.index = np.arange(frame_count)
+    # Fill in missing values from end, if there weren't enough frames
+    desired_frame_count = 4 * 8 * 4 * 100
+    series.reindex(np.arange(desired_frame_count))
+    return series
+
+def load_data(data_type, participant, trial):
+    filename = "%s_%s_%s.csv" % (data_type, participant, trial)
+    return pd.read_csv("../extracted_motion_parameters/data/" + filename, index_col=0, header=None, squeeze=True)
+
+def load_normalized_data(data_type):
+    from collections import defaultdict
+    data = defaultdict(dict)
+    for participant in participants:
+        for trial in trials:
+            data[participant][trial] = load_data(data_type, participant, trial)
+    
+    normalized = [
+        normalize_frame_numbers(data, participant, trial)
+        for participant in participants
+        for trial in trials
+    ]
+    normalized_dataframe = pd.concat(normalized, axis='columns')
+    normalized_dataframe.columns = pd.MultiIndex.from_product(
+        [participants, trials],
+        names=["Participant", "Trial"]
+    )
+    return normalized_dataframe
