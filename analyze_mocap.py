@@ -24,7 +24,7 @@ def load_qualisys_data(filename):
 def plot_marker_trajectories(frames):
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
-    for marker in frames.columns.levels[0]:
+    for marker in frames.columns.get_level_values(0).unique():
         marker_frames = frames.loc[:, marker]
         ax.plot(marker_frames["x"], marker_frames["y"], marker_frames["z"], label=marker)
     ax.set_title('Marker Trajectories')
